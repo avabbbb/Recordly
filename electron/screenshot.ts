@@ -15,9 +15,10 @@ import { listCapturePickerWindows } from "./ipc/capturePickerSources";
 import { isCursorCaptureActive } from "./ipc/state";
 import { getScreen } from "./ipc/utils";
 import {
+	beginCaptureSelection,
 	closeCapturePickerWindows,
 	createCapturePickerWindows,
-	getCapturePickerWindows,
+	endCaptureSelection,
 	getHudOverlayWindow,
 	isCapturePickerWebContents,
 } from "./windows";
@@ -25,12 +26,9 @@ import {
 const mainDir = path.dirname(fileURLToPath(import.meta.url));
 type Frame = { image: NativeImage; bounds: ScreenshotRect };
 type Document = { image: NativeImage; window: BrowserWindow; pinned: boolean };
-let picking = false;
-export function isScreenshotSelectionActive() {
-	return picking;
-}
 
 export function registerScreenshotHandlers() {
+	let picking = false;
 	const frames = new Map<number, Frame>();
 	const documents = new Map<number, Document>();
 	let restoreHud = false;
@@ -39,6 +37,7 @@ export function registerScreenshotHandlers() {
 		closeCapturePickerWindows();
 		frames.clear();
 		picking = false;
+		endCaptureSelection();
 		const hud = getHudOverlayWindow();
 		if (restoreHud && hud && !hud.isDestroyed()) hud.showInactive();
 		restoreHud = false;
@@ -88,12 +87,11 @@ export function registerScreenshotHandlers() {
 		return win;
 	};
 	const start = async () => {
-		if (picking || getCapturePickerWindows().length)
-			throw new Error("Finish the current selection first.");
 		if (isCursorCaptureActive)
 			throw new Error("Stop the recording before taking a screenshot.");
 		if (process.platform === "linux")
 			throw new Error("Screenshot selection currently supports Windows and macOS.");
+		if (!beginCaptureSelection()) throw new Error("Finish the current selection first.");
 		picking = true;
 		const hud = getHudOverlayWindow();
 		restoreHud = Boolean(hud?.isVisible());

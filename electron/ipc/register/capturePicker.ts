@@ -1,9 +1,10 @@
 import { ipcMain } from "electron";
-import { isScreenshotSelectionActive } from "../../screenshot";
 import type { SourceListPickResult } from "../../sourceListPicker";
 import {
+	beginCaptureSelection,
 	closeCapturePickerWindows,
 	createCapturePickerWindows,
+	endCaptureSelection,
 	isCapturePickerWebContents,
 } from "../../windows";
 import { listCapturePickerWindows } from "../capturePickerSources";
@@ -121,10 +122,10 @@ export function registerCapturePickerHandlers({
 		return { success: true, source };
 	};
 	ipcMain.handle("pick-capture-target", () => {
-		if (isScreenshotSelectionActive())
-			return { success: false, message: "Finish the screenshot selection first." };
 		if (isCursorCaptureActive) return { success: false, canceled: true };
 		if (!activePick) {
+			if (!beginCaptureSelection())
+				return { success: false, message: "Finish the current selection first." };
 			activePick = pickTarget()
 				.catch((error) => {
 					finishPick(null);
@@ -139,6 +140,7 @@ export function registerCapturePickerHandlers({
 				})
 				.finally(() => {
 					activePick = null;
+					endCaptureSelection();
 				});
 		}
 		return activePick;

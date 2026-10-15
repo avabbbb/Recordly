@@ -1313,6 +1313,16 @@ export function getCapturePickerWindows(): BrowserWindow[] {
 	return [...capturePickerWindows];
 }
 
+let captureSelectionBusy = false;
+export function beginCaptureSelection(): boolean {
+	if (captureSelectionBusy) return false;
+	captureSelectionBusy = true;
+	return true;
+}
+export function endCaptureSelection(): void {
+	captureSelectionBusy = false;
+}
+
 export function closeCapturePickerWindows(): void {
 	const windows = capturePickerWindows;
 	capturePickerWindows = [];

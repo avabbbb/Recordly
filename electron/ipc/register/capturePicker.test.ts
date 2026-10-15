@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 const mocks = vi.hoisted(() => ({
 	handlers: new Map<string, (...args: unknown[]) => unknown>(),
 	list: vi.fn(),
+	begin: vi.fn(),
+	end: vi.fn(),
 	pickSourceList: vi.fn(),
 	validate: vi.fn(),
 
@@ -21,6 +24,8 @@ vi.mock("electron", () => ({
 	},
 }));
 vi.mock("../../windows", () => ({
+	beginCaptureSelection: mocks.begin,
+	endCaptureSelection: mocks.end,
 	createCapturePickerWindows: mocks.create,
 	closeCapturePickerWindows: mocks.close,
 	isCapturePickerWebContents: (sender: object) => mocks.windows.includes(sender),
@@ -51,7 +56,9 @@ vi.mock("./sources", () => ({
 	broadcastSelectedSourceChange: vi.fn(),
 	getDesktopSources: vi.fn().mockResolvedValue([{ id: "screen:1:0", display_id: "1" }]),
 }));
+
 import { registerCapturePickerHandlers } from "./capturePicker";
+
 const platform = process.platform;
 afterEach(() => {
 	Object.defineProperty(process, "platform", { value: platform });
@@ -65,12 +72,22 @@ beforeEach(() => {
 	mocks.windows = [mocks.overlay];
 	Object.defineProperty(process, "platform", { value: "darwin" });
 	mocks.list.mockResolvedValue([]);
+	mocks.begin.mockReturnValue(true);
 	mocks.validate.mockImplementation(async (source) => source);
 	registerCapturePickerHandlers({ pickSourceList: mocks.pickSourceList });
 });
 const call = (name: string, sender: object, input?: unknown) =>
 	mocks.handlers.get(name)!({ sender }, input);
 describe("selection-only picker IPC", () => {
+	it("does not replace a screenshot selection, including its capture startup", async () => {
+		mocks.begin.mockReturnValue(false);
+		expect(await call("pick-capture-target", mocks.outsider)).toMatchObject({
+			success: false,
+			message: expect.stringContaining("Finish"),
+		});
+		expect(mocks.list).not.toHaveBeenCalled();
+		expect(mocks.create).not.toHaveBeenCalled();
+	});
 	it("ignores completion from other windows and forces selection-only completion", async () => {
 		const pending = call("pick-capture-target", mocks.outsider);
 		await vi.waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
