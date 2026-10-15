@@ -18,6 +18,7 @@ export function shouldProtectHudCapture(
 	enabled: boolean,
 	recording: boolean,
 	starting: boolean,
+	temporarilyRevealed = false,
 ): boolean {
-	return enabled && (recording || starting);
+	return enabled && (recording || starting) && !temporarilyRevealed;
 }
