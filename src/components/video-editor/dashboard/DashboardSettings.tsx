@@ -12,6 +12,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 	const [recordings, setRecordings] = useState("");
 	const [hideHud, setHideHud] = useState(true);
 	const [captureSupported, setCaptureSupported] = useState(false);
+	const [isWindows, setIsWindows] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const run = async (action: () => Promise<void>) => {
 		setBusy(true);
@@ -35,6 +36,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 				if (directory.success) setRecordings(directory.path);
 				if (protection.success) setHideHud(protection.enabled);
 				setCaptureSupported(supportsHudCaptureProtection(platform));
+				setIsWindows(platform === "win32");
 			})
 			.catch((error) => toast.error(String(error)));
 		return () => {
@@ -102,7 +104,11 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 					{captureSupported && (
 						<SettingsRow
 							title="Hide HUD from recordings"
-							description="Only while recording. The idle HUD stays visible in captures."
+							description={
+							isWindows
+								? "Ctrl+Alt+H temporarily reveals controls during a recording for remote desktop use. The HUD will also appear in recordings while revealed."
+								: "Only while recording. The idle HUD stays visible in captures."
+							}
 						>
 							<Switch
 								aria-label="Hide HUD from recordings"
