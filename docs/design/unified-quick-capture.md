@@ -1,7 +1,7 @@
 # Unified Quick Capture：截图、贴图与录屏一体化设计
 
-> 状态：**Design Proposal / 待评审** · 日期：2026-10-13  
-> 范围：`avabbbb/Recordly` Fork · 基线：2026-10-07 上游 `main`（`535d1cf`）  
+> 状态：**Design Proposal / 待评审** · 更新：2026-10-15  
+> 范围：`avabbbb/Recordly` Fork · 基线：2026-10-14 上游 `main`（`52a91356`）  
 > 本文仅定义产品和技术设计，不代表相关功能已实现。
 
 ## 0. 一句话愿景
@@ -44,6 +44,24 @@
 ## 2. 关键交互设计
 
 ### 2.1 快捷键统一入口
+
+**P0：全局唤起与录制控制必须随第一阶段交付。** 现有编辑器快捷键与全局录制快捷键是两个入口，不能以编辑器内支持自定义来替代后台控制。
+
+| 操作 | macOS 建议默认值 | Windows/Linux 建议默认值 |
+| --- | --- | --- |
+| 唤起捕获选择器 | `Cmd+Shift+2` | `Ctrl+Shift+2` |
+| 开始 / 停止录制 | `Cmd+Option+R` | `Ctrl+Alt+R` |
+| 暂停 / 恢复 | `Cmd+Option+P` | `Ctrl+Alt+P` |
+| 显示 / 隐藏 HUD | `Cmd+Option+H` | `Ctrl+Alt+H` |
+| 取消并丢弃（确认后） | `Cmd+Option+Shift+X` | `Ctrl+Alt+Shift+X` |
+
+以上均须可自定义、禁用、持久化，注册失败明确显示冲突。全局快捷键在应用失焦、HUD 隐藏时仍连接同一个采集会话；取消丢弃须确认，停止不要求先恢复 HUD。录制中不允许重新选源；倒计时、结束收尾期间不重复开始。系统或远程软件拦截的按键不能保证送达，须用真实 Mac → UU → Windows 会话验证。
+
+**截至当前基线的实现状态**：上游已有 `CapturePicker`，macOS 支持区域选择，Windows 选择屏幕/窗口，Linux 使用既有列表或系统 portal；选择后仍由 HUD 控制录制。任意区域录制不能笼统称为“全平台已实现”或“完全未实现”。上游 [PR #1137](https://github.com/webadderallorg/Recordly/pull/1137) 是未合并的全局控制/远程可见模式实现，本次延续它接入现有选择器。截图、贴图、区域 GIF/MP4 快速工具栏仍是后续产品目标。
+
+**远程可见模式**：显式关闭 HUD 捕获保护，提示 HUD 也可能出现在录像里；关闭后恢复用户原来的隐藏偏好。显示 HUD 的快捷键只改变窗口可见性，不暗中修改捕获保护。macOS 原生进程排除在录制启动时生效，改变模式后须重启当前录制才能更新该排除。
+
+实现约束：直接复用已有选源入口、录制回调与状态；不创建第二套控制器、失败时自动切换的录制引擎、推测性的兼容层或伪成功返回。系统输入、磁盘设置等边界做必要校验，失败明确呈现。
 
 1. 按「快速捕获」热键（首次提供建议值，必须可自定义并检测系统/其他应用占用）。
 2. 用 **浅色边框 + 四角拖拽柄 + 尺寸数值** 预览选区；默认支持拖拽任意区域、点击窗口吸附、Esc 取消。
@@ -99,7 +117,7 @@
 ```text
   全局快捷键 / HUD / SourceSelector
                  │
-        Quick Capture Overlay      ← 新增，可按需创建
+        CapturePicker 扩展         ← 复用现有选区浮层
                  │
          Selection Contract        ← 唯一的选区坐标契约
             ┌────┴───────────┐
@@ -116,13 +134,14 @@
                             existing PixiJS editor & exporter
 ```
 
-### 已核对的代码锚点（2026-10-13）
+### 已核对的代码锚点（2026-10-15）
 
 | 路径 | 目前职责 | 设计改动 |
 | --- | --- | --- |
-| [`src/components/launch/SourceSelector.tsx`](../../src/components/launch/SourceSelector.tsx) | 选择全屏或窗口源 | 入口增加「框选区域」，不破坏现有源选择 |
+| [`src/components/capture-picker/CapturePicker.tsx`](../../src/components/capture-picker/CapturePicker.tsx) / [`electron/ipc/register/capturePicker.ts`](../../electron/ipc/register/capturePicker.ts) | 上游现有选择器；区域仅向 macOS 开放 | 复用现有 UI 与 IPC，Windows 区域采集单独扩展；不另起一套选区 |
 | [`electron/ipc/register/recording.ts`](../../electron/ipc/register/recording.ts) | 启动录制 IPC；向原生 helper 传配置 | 将规范化区域作为可选捕获范围传给原生 helper |
-| [`electron/native/ScreenCaptureKitRecorder.swift`](../../electron/native/ScreenCaptureKitRecorder.swift) | macOS 显示器/窗口录制、窗口裁切、音视频写入 | 新增区域模式，配置源矩形与视频输出尺寸 |
+| [`electron/native/ScreenCaptureKitRecorder.swift`](../../electron/native/ScreenCaptureKitRecorder.swift) | macOS 显示器/窗口/区域录制、音视频写入 | 复用区域模式，验证源矩形、输出尺寸和快捷入口的一致性 |
+| [`electron/ipc/sourceArea.ts`](../../electron/ipc/sourceArea.ts) | 现有选区标准化与区域源构建 | 共享当前坐标契约，截图与后续 Windows 区域扩展沿用同一来源 |
 | [`electron/native/windows-capture/src/dxgi_session.cpp`](../../electron/native/windows-capture/src/dxgi_session.cpp) | Windows 原生 DXGI 会话、屏幕/窗口矩形 | 后续将区域模式接入该捕获裁切/复制流程 |
 | [`electron/ipc/windowsCaptureSelection.ts`](../../electron/ipc/windowsCaptureSelection.ts) | Windows 屏幕与窗口源解析 | 在这里解决具体 display/窗口映射，不塞给 UI 猜测 |
 | [`electron/ipc/state.ts`](../../electron/ipc/state.ts) | 选源、录制状态、光标轨迹状态 | **复用**录制单一权威状态 |
@@ -208,6 +227,10 @@ idle -> selecting -> selected -> recording -> finalizing -> done
 
 ### PR1：区域 MP4 / GIF 的最小闭环（Mac first）
 
+- [ ] **P0**：应用失焦时全局唤起选择器；隐藏 HUD 时仍可开始/停止、暂停/恢复，不要求点击控制条。
+- [ ] **P0**：快捷键自定义、禁用、重启持久化、注册冲突提示、退出释放有验证；与编辑器内快捷键分别列出。
+- [ ] **P0**：Mac → UU → Windows 实测按键转发、录像暂停/恢复/停止与输出回放；浏览器模拟事件不算真实全局快捷键验收。
+- [ ] **P0**：远程可见模式提示可能入镜；恢复隐藏偏好；取消只作用于用户确认的那一条录制。
 - [ ] 快捷键进入选区；拖动矩形，支持 Esc 取消；工具栏不遮选区。
 - [ ] 任意单显示器选区录制成功，输出可播放、尺寸与实际 rect 一致的 MP4。
 - [ ] 停止后既可直接保存，也可进入现有 Recordly 编辑器，鼠标轨迹/自动变焦坐标正确。
@@ -241,7 +264,7 @@ idle -> selecting -> selected -> recording -> finalizing -> done
 | PR | 范围 | 不应混入 |
 | --- | --- | --- |
 | **PR0（本文）** | 产品目标、交互图、API 草案、验收、许可证与性能基准 | 生产代码和依赖升级 |
-| **PR1** | Mac 区域选区 + 原生采集 + MP4/GIF + 现有编辑器接入 | 完整截图标注器、Rust 重构 |
+| **PR1（P0）** | 全局唤起/控制/自定义与远控验收；Mac 区域选区 + 原生采集 + MP4/GIF + 现有编辑器接入 | 完整截图标注器、Rust 重构 |
 | **PR2** | 截图 + 复制/保存 + 置顶贴图 | 复杂长截图算法 |
 | **PR3** | 自由颜色、常用标注、编号 ①②③ | 替换现有时间线 |
 | **PR4** | 长截图、性能基线、Windows 区域录制单独评估与交付 | 强制跨平台一次到位 |
