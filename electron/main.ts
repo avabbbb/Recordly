@@ -1014,16 +1014,6 @@ app.whenReady().then(async () => {
 		updateTrayMenu();
 	}
 	setupApplicationMenu();
-	if (process.platform === "win32") {
-		// Escape hatch when capture protection hides the HUD from remote desktop viewers.
-		// Keep this separate from recording-action shortcuts proposed in #956.
-		const registered = globalShortcut.register("Control+Alt+H", () => {
-			toggleHudRemoteReveal();
-		});
-		if (!registered) {
-			console.warn("[hud] Ctrl+Alt+H unavailable; use Settings > Recording to reveal the HUD");
-		}
-	}
 	await Promise.all([
 		ensureRecordingsDir(),
 		!VITE_DEV_SERVER_URL
@@ -1047,6 +1037,21 @@ app.whenReady().then(async () => {
 		(recording: boolean, sourceName: string) => {
 			selectedSourceName = sourceName;
 			setHudOverlayRecordingActive(recording);
+			if (process.platform === "win32") {
+				// Only claim this global key while a recording is active.
+				// Recording-action shortcuts are handled separately by #956.
+				const shortcut = "Control+Alt+H";
+				if (!recording) {
+					globalShortcut.unregister(shortcut);
+				} else if (!globalShortcut.isRegistered(shortcut)) {
+					const registered = globalShortcut.register(shortcut, () => {
+						toggleHudRemoteReveal();
+					});
+					if (!registered) {
+						console.warn("[hud] Ctrl+Alt+H unavailable; disable Hide HUD from recordings in Settings");
+					}
+				}
+			}
 			if (shouldUseTray()) {
 				if (!tray) createTray();
 				updateTrayMenu(recording);
