@@ -1,16 +1,16 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import {
-	frontmostAt,
-	MIN_AREA_SIZE,
-	normalizeAreaRect,
-	moveAreaRect,
-	resizeAreaRect,
-	rectContains,
 	AREA_HANDLES,
 	type AreaHandle,
 	type AreaRect,
+	frontmostAt,
+	MIN_AREA_SIZE,
+	moveAreaRect,
+	normalizeAreaRect,
+	rectContains,
+	resizeAreaRect,
 } from "./areaGeometry";
 
 type Target =
@@ -25,6 +25,9 @@ function screenRect() {
 /** Chooses a source only. Recording remains controlled by the existing HUD. */
 export function CapturePicker() {
 	const displayId = Number(new URLSearchParams(window.location.search).get("displayId"));
+	const screenshot = new URLSearchParams(window.location.search).get("purpose") === "screenshot";
+	const [background, setBackground] = useState("");
+	const [error, setError] = useState("");
 	const [target, setTarget] = useState<Target | null>(null);
 	const [allowArea, setAllowArea] = useState(false);
 	const windows = useRef<{ window: CapturePickerWindow; rect: AreaRect }[]>([]);
@@ -69,6 +72,32 @@ export function CapturePicker() {
 			)
 				return;
 			completed.current = true;
+			if (screenshot) {
+				void window.electronAPI
+					.completeScreenshotPick(
+						pick
+							? {
+									displayId,
+									rect: {
+										...pick.rect,
+										x: origin.current.x + pick.rect.x,
+										y: origin.current.y + pick.rect.y,
+									},
+								}
+							: null,
+					)
+					.then((result) => {
+						if (!result.success) {
+							completed.current = false;
+							setError(result.error ?? "Screenshot failed.");
+						}
+					})
+					.catch((error) => {
+						completed.current = false;
+						setError(String(error));
+					});
+				return;
+			}
 			const common = { displayId, record: false };
 			void window.electronAPI.completeCapturePick(
 				!pick
@@ -86,13 +115,22 @@ export function CapturePicker() {
 								},
 			);
 		},
-		[displayId],
+		[displayId, screenshot],
 	);
 	useEffect(() => {
 		let disposed = false;
-		void window.electronAPI
-			.getCapturePickerContext(displayId)
-			.then((context) => {
+		void (
+			screenshot
+				? window.electronAPI.getScreenshotContext(displayId)
+				: window.electronAPI.getCapturePickerContext(displayId)
+		)
+			.then(async (context) => {
+				if ("background" in context && typeof context.background === "string") {
+					const image = new Image();
+					image.src = context.background;
+					await image.decode();
+					if (!disposed) setBackground(context.background);
+				}
 				if (disposed) return;
 				if (context.displayBounds) origin.current = context.displayBounds;
 				setAllowArea(context.allowArea === true);
@@ -130,7 +168,7 @@ export function CapturePicker() {
 		return () => {
 			disposed = true;
 		};
-	}, [displayId, targetAt, finish]);
+	}, [displayId, targetAt, finish, screenshot]);
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
@@ -217,7 +255,11 @@ export function CapturePicker() {
 				if (editingArea.current) {
 					editingArea.current = false;
 				}
-				finish(targetAt(event.clientX, event.clientY));
+				const selected = targetAt(event.clientX, event.clientY);
+				if (screenshot) {
+					editingArea.current = true;
+					update({ kind: "area", rect: selected.rect });
+				} else finish(selected);
 			}}
 			onPointerCancel={() => {
 				press.current = null;
@@ -227,6 +269,14 @@ export function CapturePicker() {
 				finish(null);
 			}}
 		>
+			{background && (
+				<img
+					src={background}
+					alt="Captured display"
+					draggable={false}
+					className="pointer-events-none absolute inset-0 h-full w-full"
+				/>
+			)}
 			{target && (
 				<div
 					className={
@@ -288,6 +338,14 @@ export function CapturePicker() {
 						if (event.key === "Enter" || event.key === " ") event.stopPropagation();
 					}}
 				>
+					{screenshot && (
+						<Button
+							size="sm"
+							onClick={() => current.current && finish(current.current)}
+						>
+							Capture screenshot
+						</Button>
+					)}
 					<Button
 						variant="secondary"
 						size="sm"
@@ -304,13 +362,15 @@ export function CapturePicker() {
 			)}
 			<div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center">
 				<div className="rounded-full bg-black/80 px-4 py-2 text-sm text-white">
-					{target?.kind === "area" && editingArea.current
-						? target.rect.width < MIN_AREA_SIZE || target.rect.height < MIN_AREA_SIZE
-							? "Area is too small · Drag to enlarge · Esc to cancel"
-							: "Move or resize the area · Enter to select · Esc to cancel"
-						: allowArea
-							? "Click a window or the desktop, or drag an area · Esc to cancel"
-							: "Click a window or the desktop · Esc to cancel"}
+					{error ||
+						(target?.kind === "area" && editingArea.current
+							? target.rect.width < MIN_AREA_SIZE ||
+								target.rect.height < MIN_AREA_SIZE
+								? "Area is too small · Drag to enlarge · Esc to cancel"
+								: "Move or resize the area · Enter to select · Esc to cancel"
+							: allowArea
+								? "Click a window or the desktop, or drag an area · Esc to cancel"
+								: "Click a window or the desktop · Esc to cancel")}
 				</div>
 			</div>
 		</div>

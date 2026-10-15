@@ -35,6 +35,7 @@ import { createRecordingShortcutDispatcher } from "./recordingShortcutDispatch";
 import { registerRecordingShortcuts } from "./recordingShortcuts";
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
 import { createSaveBeforeCloseController } from "./saveBeforeClose";
+import { registerScreenshotHandlers } from "./screenshot";
 import {
 	checkForAppUpdates,
 	deferUpdateReminder,
@@ -928,11 +929,6 @@ app.on("second-instance", (_event, commandLine) => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
-	registerRecordingShortcuts((action) => {
-		void dispatchRecordingShortcut(action).catch((error) =>
-			console.error("[recording-shortcuts]", error),
-		);
-	});
 	authCallbacks.startDevServer();
 	if (process.defaultApp && process.argv[1]) {
 		app.setAsDefaultProtocolClient(authCallbacks.protocol, process.execPath, [
@@ -1072,6 +1068,19 @@ app.whenReady().then(async () => {
 			}
 		},
 	);
+
+	const takeScreenshot = registerScreenshotHandlers();
+	registerRecordingShortcuts((action) => {
+		if (action === "takeScreenshot") {
+			void takeScreenshot().catch((error) =>
+				dialog.showErrorBox("Screenshot failed", String(error)),
+			);
+			return;
+		}
+		void dispatchRecordingShortcut(action).catch((error) =>
+			console.error("[recording-shortcuts]", error),
+		);
+	});
 
 	if (IS_SMOKE_EXPORT || process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT) {
 		await logSmokeExportGpuDiagnostics();

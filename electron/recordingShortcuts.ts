@@ -41,10 +41,12 @@ export function registerRecordingShortcuts(dispatch: (action: RecordingShortcutA
 		for (const error of errors) console.warn("[recording-shortcuts]", error);
 	};
 	try {
-		if (fs.existsSync(settingsPath))
-			settings = validateRecordingShortcuts(
-				JSON.parse(fs.readFileSync(settingsPath, "utf8")),
-			);
+		if (fs.existsSync(settingsPath)) {
+			const saved: unknown = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+			if (!saved || typeof saved !== "object" || Array.isArray(saved))
+				throw new Error("Expected a shortcut settings object.");
+			settings = validateRecordingShortcuts({ ...DEFAULT_RECORDING_SHORTCUTS, ...saved });
+		}
 		bind(settings);
 	} catch (error) {
 		// Do not replace a corrupt user configuration with silently active defaults.
