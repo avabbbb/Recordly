@@ -25,12 +25,13 @@ const mocks = vi.hoisted(() => {
 		Window,
 		instances,
 		getSources: vi.fn(),
+		begin: vi.fn(),
+		end: vi.fn(),
 		write: vi.fn(),
 		clipboard: vi.fn(),
 		save: vi.fn(),
 		create: vi.fn(),
 		close: vi.fn(),
-		pickers: [] as object[],
 		overlay: {},
 		recording: false,
 		hud: {
@@ -75,8 +76,9 @@ vi.mock("./ipc/utils", () => ({
 	}),
 }));
 vi.mock("./windows", () => ({
+	beginCaptureSelection: mocks.begin,
+	endCaptureSelection: mocks.end,
 	getHudOverlayWindow: () => mocks.hud,
-	getCapturePickerWindows: () => mocks.pickers,
 	createCapturePickerWindows: mocks.create,
 	closeCapturePickerWindows: mocks.close,
 	isCapturePickerWebContents: (sender: object) => sender === mocks.overlay,
@@ -115,7 +117,7 @@ describe("screenshot native IPC and resource ownership", () => {
 		mocks.handlers.clear();
 		mocks.instances.length = 0;
 		mocks.recording = false;
-		mocks.pickers = [];
+		mocks.begin.mockReturnValue(true);
 		mocks.getSources.mockResolvedValue([{ display_id: "1", thumbnail: image(2000, 1000) }]);
 		mocks.save.mockResolvedValue({ canceled: false, filePath: "/screenshot.png" });
 		mocks.decode.mockReturnValue(image(600, 300, "edited"));
@@ -190,7 +192,7 @@ describe("screenshot native IPC and resource ownership", () => {
 		mocks.recording = true;
 		expect(await invoke("start-screenshot", {})).toMatchObject({ success: false });
 		mocks.recording = false;
-		mocks.pickers = [{}];
+		mocks.begin.mockReturnValue(false);
 		expect(await invoke("start-screenshot", {})).toMatchObject({ success: false });
 		expect(mocks.getSources).not.toHaveBeenCalled();
 	});
