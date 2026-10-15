@@ -544,6 +544,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	completeCapturePick: (pick: CapturePick | null) => {
 		return ipcRenderer.invoke("complete-capture-pick", pick);
 	},
+	startScreenshot: () => ipcRenderer.invoke("start-screenshot"),
+	getScreenshotContext: (displayId: number) =>
+		ipcRenderer.invoke("get-screenshot-context", displayId),
+	completeScreenshotPick: (
+		pick: { displayId: number; rect: import("../src/lib/screenshot").ScreenshotRect } | null,
+	) => ipcRenderer.invoke("complete-screenshot-pick", pick),
+	getScreenshotDocument: () => ipcRenderer.invoke("get-screenshot-document"),
+	screenshotAction: (
+		action: "copy" | "save" | "pin" | "close" | "opacity" | "zoom",
+		value?: string | number,
+	) => ipcRenderer.invoke("screenshot-action", action, value),
 	getCapturePickerContext: (displayId: number) => {
 		return ipcRenderer.invoke("get-capture-picker-context", displayId);
 	},

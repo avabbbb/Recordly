@@ -1,15 +1,16 @@
-import { validateCaptureSource } from "../captureSelection";
-import { listCapturePickerWindows } from "../capturePickerSources";
 import { ipcMain } from "electron";
+import { isScreenshotSelectionActive } from "../../screenshot";
 import type { SourceListPickResult } from "../../sourceListPicker";
 import {
 	closeCapturePickerWindows,
 	createCapturePickerWindows,
 	isCapturePickerWebContents,
 } from "../../windows";
+import { listCapturePickerWindows } from "../capturePickerSources";
+import { validateCaptureSource } from "../captureSelection";
 import { stopWindowBoundsCapture } from "../cursor/bounds";
-import { isCursorCaptureActive, setSelectedSource } from "../state";
 import { createAreaSource, createWindowSource, normalizeCapturePick } from "../sourceArea";
+import { isCursorCaptureActive, setSelectedSource } from "../state";
 import type { CapturePick, CapturePickerWindow, SelectedSource } from "../types";
 import { getScreen } from "../utils";
 import { getScreenSourceIdForDisplay, isLikelyLinuxWaylandSession } from "./sourceMapping";
@@ -120,6 +121,8 @@ export function registerCapturePickerHandlers({
 		return { success: true, source };
 	};
 	ipcMain.handle("pick-capture-target", () => {
+		if (isScreenshotSelectionActive())
+			return { success: false, message: "Finish the screenshot selection first." };
 		if (isCursorCaptureActive) return { success: false, canceled: true };
 		if (!activePick) {
 			activePick = pickTarget()

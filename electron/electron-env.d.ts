@@ -251,6 +251,26 @@ interface Window {
 			message?: string;
 		}>;
 		completeCapturePick: (pick: CapturePick | null) => Promise<void>;
+		startScreenshot: () => Promise<import("../src/lib/screenshot").ScreenshotResult>;
+		getScreenshotContext: (displayId: number) => Promise<{
+			displayBounds: import("../src/lib/screenshot").ScreenshotRect;
+			allowArea: boolean;
+			lastArea: null;
+			windows: CapturePickerWindow[];
+			cursor: { x: number; y: number };
+			background: string;
+		}>;
+		completeScreenshotPick: (
+			pick: {
+				displayId: number;
+				rect: import("../src/lib/screenshot").ScreenshotRect;
+			} | null,
+		) => Promise<import("../src/lib/screenshot").ScreenshotResult>;
+		getScreenshotDocument: () => Promise<import("../src/lib/screenshot").ScreenshotDocument>;
+		screenshotAction: (
+			action: "copy" | "save" | "pin" | "close" | "opacity" | "zoom",
+			value?: string | number,
+		) => Promise<import("../src/lib/screenshot").ScreenshotResult>;
 		getCapturePickerContext: (displayId: number) => Promise<{
 			displayBounds: CaptureArea | null;
 			lastArea: CaptureArea | null;

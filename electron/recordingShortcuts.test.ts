@@ -32,6 +32,19 @@ vi.mock("./appPaths", () => ({ USER_DATA_PATH: "test-data" }));
 import { registerRecordingShortcuts } from "./recordingShortcuts";
 
 describe("recording shortcut lifecycle", () => {
+	it("keeps saved recording bindings when a new screenshot action is introduced", () => {
+		mocks.exists.mockReturnValue(true);
+		const { takeScreenshot: _newAction, ...previous } = DEFAULT_RECORDING_SHORTCUTS;
+		mocks.read.mockReturnValue(JSON.stringify({ ...previous, toggleRecording: "F9" }));
+		const status = registerRecordingShortcuts(vi.fn());
+		expect(status()).toMatchObject({
+			settings: {
+				toggleRecording: "F9",
+				takeScreenshot: DEFAULT_RECORDING_SHORTCUTS.takeScreenshot,
+			},
+			errors: [],
+		});
+	});
 	beforeEach(() => {
 		vi.resetAllMocks();
 		mocks.handlers.clear();
@@ -44,7 +57,7 @@ describe("recording shortcut lifecycle", () => {
 		mocks.register.mock.calls[1][1]();
 		expect(dispatch).toHaveBeenCalledWith("togglePause");
 		mocks.quit.mock.calls[0][1]();
-		expect(mocks.unregister).toHaveBeenCalledTimes(5);
+		expect(mocks.unregister).toHaveBeenCalledTimes(6);
 	});
 	it("reports OS conflicts without claiming success for unavailable keys", () => {
 		mocks.register.mockReturnValueOnce(false);
@@ -61,7 +74,7 @@ describe("recording shortcut lifecycle", () => {
 			}),
 		);
 		registerRecordingShortcuts(vi.fn());
-		expect(mocks.register).toHaveBeenCalledTimes(4);
+		expect(mocks.register).toHaveBeenCalledTimes(5);
 		expect(mocks.register).toHaveBeenCalledWith("F9", expect.any(Function));
 	});
 	it("leaves active bindings intact on invalid input or failed persistence", () => {
@@ -88,7 +101,7 @@ describe("recording shortcut lifecycle", () => {
 		const result = mocks.handlers.get("set-recording-shortcuts")!({}, settings);
 		expect(result).toMatchObject({ success: true, errors: [], settings });
 		expect(mocks.rename).toHaveBeenCalled();
-		expect(mocks.unregister).toHaveBeenCalledTimes(5);
+		expect(mocks.unregister).toHaveBeenCalledTimes(6);
 	});
 	it("does not silently enable defaults over a corrupt configuration", () => {
 		mocks.exists.mockReturnValue(true);

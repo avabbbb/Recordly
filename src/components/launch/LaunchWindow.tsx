@@ -307,6 +307,25 @@ function LaunchWindowContent() {
 		<>
 			<Button
 				variant="ghost"
+				size="sm"
+				title="Take screenshot (Ctrl/Cmd+Alt+S)"
+				disabled={isPickerPending || recording || finalizing}
+				onClick={() =>
+					void (async () => {
+						try {
+							if (!(await cancelRecordingStart())) return;
+							const result = await window.electronAPI.startScreenshot();
+							if (!result.success) toast.error(result.error ?? "Screenshot failed.");
+						} catch (error) {
+							toast.error(String(error));
+						}
+					})()
+				}
+			>
+				Screenshot
+			</Button>
+			<Button
+				variant="ghost"
 				size="lg"
 				className={`${styles.electronNoDrag} group gap-2 px-3 min-w-0 max-w-[180px] shrink-0`}
 				title={selectedSource}
