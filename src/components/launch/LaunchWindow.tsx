@@ -80,38 +80,6 @@ function LaunchWindowContent() {
 	} = useScreenRecorder();
 
 	const { elapsed, formatTime } = useRecordingTimer(recording, paused);
-	const shortcutInFlight = useRef(false);
-	useEffect(
-		() =>
-			window.electronAPI?.onRecordingShortcut?.((action) => {
-				if (shortcutInFlight.current || finalizing || countdownActive) return;
-				shortcutInFlight.current = true;
-				void (async () => {
-					try {
-						if (action === "toggleRecording") await toggleRecording();
-						else if (action === "togglePause" && recording) {
-							if (paused) await resumeRecording();
-							else await pauseRecording();
-						} else if (action === "cancelRecording" && recording)
-							await cancelRecording();
-					} catch (error) {
-						toast.error(String(error));
-					} finally {
-						shortcutInFlight.current = false;
-					}
-				})();
-			}),
-		[
-			recording,
-			paused,
-			finalizing,
-			countdownActive,
-			toggleRecording,
-			pauseRecording,
-			resumeRecording,
-			cancelRecording,
-		],
-	);
 	const hudContentRef = useRef<HTMLDivElement>(null);
 	const hudBarRef = useRef<HTMLDivElement>(null);
 
@@ -238,6 +206,41 @@ function LaunchWindowContent() {
 		beginInteractiveHudAction,
 		syncSelectedSource,
 	]);
+
+	const shortcutInFlight = useRef(false);
+	useEffect(
+		() =>
+			window.electronAPI?.onRecordingShortcut?.((action) => {
+				if (shortcutInFlight.current || finalizing || countdownActive) return;
+				shortcutInFlight.current = true;
+				void (async () => {
+					try {
+						if (action === "openCapturePicker") await handlePickOnScreen();
+						else if (action === "toggleRecording") await toggleRecording();
+						else if (action === "togglePause" && recording) {
+							if (paused) await resumeRecording();
+							else await pauseRecording();
+						} else if (action === "cancelRecording" && recording)
+							await cancelRecording();
+					} catch (error) {
+						toast.error(String(error));
+					} finally {
+						shortcutInFlight.current = false;
+					}
+				})();
+			}),
+		[
+			recording,
+			paused,
+			finalizing,
+			countdownActive,
+			handlePickOnScreen,
+			toggleRecording,
+			pauseRecording,
+			resumeRecording,
+			cancelRecording,
+		],
+	);
 
 	useEffect(() => {
 		let mounted = true;

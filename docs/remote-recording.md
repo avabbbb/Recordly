@@ -25,10 +25,17 @@ before starting. Normal sign-in and capture permission requirements still apply.
 
 | Action | Windows / Linux default | macOS default |
 | --- | --- | --- |
+| Choose recording source | Ctrl+Shift+2 | Cmd+Shift+2 |
 | Start / stop recording | Ctrl+Alt+R | Cmd+Option+R |
 | Pause / resume | Ctrl+Alt+P | Cmd+Option+P |
 | Show / hide HUD | Ctrl+Alt+H | Cmd+Option+H |
 | Cancel and discard, with confirmation | Ctrl+Alt+Shift+X | Cmd+Option+Shift+X |
+
+The source shortcut restores the HUD and opens the same picker as its source
+button. It selects only; use Start / stop afterward to record. It is ignored while
+recording, counting down, or finalizing. Windows selects a screen or window;
+macOS also supports area selection. Linux uses its existing source-list/portal flow.
+It does not add a screenshot/GIF/MP4 selection toolbar.
 
 Showing the HUD does not disable capture protection. Enable remote visible mode if
 the HUD is still absent from the remote stream. Pause/resume is ignored while idle;

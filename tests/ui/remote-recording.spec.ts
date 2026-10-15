@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { installDesktopBridge } from "./bridge";
+import { installDesktopBridge, installDesktopBridgeOverrides } from "./bridge";
 
 async function openRecordingSettings(page: Page) {
 	await page.getByRole("button", { name: "Home", exact: true }).click();
@@ -44,6 +44,9 @@ test("remote visible mode preserves protection preference and shortcut conflicts
 	await expect(settings.getByRole("switch", { name: "Hide HUD from recordings" })).toBeEnabled();
 	await expect(settings.getByRole("switch", { name: "Hide HUD from recordings" })).toBeChecked();
 	await settings.getByRole("button", { name: "Reset shortcuts" }).click();
+	await expect(settings.getByRole("textbox", { name: "Choose recording source" })).toHaveValue(
+		"CommandOrControl+Shift+2",
+	);
 	await expect(settings.getByRole("textbox", { name: "Start / stop recording" })).toHaveValue(
 		"CommandOrControl+Alt+R",
 	);
@@ -60,6 +63,10 @@ test("HUD shortcut events start, pause, resume and stop through existing capture
 			data[name] = String(Number(data[name] ?? 0) + 1);
 		};
 		Object.assign(window.electronAPI, {
+			pickCaptureTarget: async () => {
+				increment("pickerOpens");
+				return { success: false, canceled: true };
+			},
 			getCountdownDelay: async () => ({ success: true, delay: 0 }),
 			getRecordingPreferences: async () => ({
 				success: true,
@@ -96,10 +103,61 @@ test("HUD shortcut events start, pause, resume and stop through existing capture
 	await command("toggleRecording");
 	await expect(page.locator("html")).toHaveAttribute("data-capture-starts", "1");
 	await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+	await command("openCapturePicker");
+	await expect(page.locator("html")).not.toHaveAttribute("data-picker-opens");
 	await command("togglePause");
 	await expect(page.getByRole("button", { name: "Resume", exact: true })).toBeVisible();
 	await command("togglePause");
 	await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
 	await command("toggleRecording");
 	await expect(page.locator("html")).toHaveAttribute("data-capture-stops", "1");
+});
+
+test("source shortcut reuses the source button, coalesces repeated input, and does not record", async ({
+	page,
+}) => {
+	await installDesktopBridge(page);
+	await installDesktopBridgeOverrides(page, () => {
+		window.electronAPI.getPlatform = async () => "win32";
+		window.electronAPI.pickCaptureTarget = async () => {
+			const data = document.documentElement.dataset;
+			data.pickerOpens = String(Number(data.pickerOpens ?? 0) + 1);
+			await new Promise<void>((resolve) =>
+				window.addEventListener("test-complete-picker", () => resolve(), { once: true }),
+			);
+			return {
+				success: true,
+				source: {
+					id: "screen:2:0",
+					name: "External display",
+					display_id: "2",
+					thumbnail: "",
+				},
+			};
+		};
+		window.electronAPI.startNativeScreenRecording = async () => {
+			throw new Error("Selecting must not start capture");
+		};
+	});
+	await page.goto("/?windowType=hud-overlay");
+	const sourceButton = page.getByRole("button", { name: "Choose recording source", exact: true });
+	await expect(sourceButton).toBeEnabled();
+	await page.evaluate(() =>
+		window.dispatchEvent(
+			new CustomEvent("test-recording-shortcut", { detail: "openCapturePicker" }),
+		),
+	);
+	await expect(page.locator("html")).toHaveAttribute("data-picker-opens", "1");
+	await page.evaluate(() => {
+		window.dispatchEvent(
+			new CustomEvent("test-recording-shortcut", { detail: "openCapturePicker" }),
+		);
+		window.dispatchEvent(
+			new CustomEvent("test-recording-shortcut", { detail: "toggleRecording" }),
+		);
+		window.dispatchEvent(new Event("test-complete-picker"));
+	});
+	await expect(sourceButton).toContainText("External display");
+	await expect(page.locator("html")).toHaveAttribute("data-picker-opens", "1");
+	await expect(page.getByRole("button", { name: "Record", exact: true })).toBeEnabled();
 });

@@ -18,6 +18,18 @@ function setup() {
 	return { hud, deps, dispatch: createRecordingShortcutDispatcher(deps) };
 }
 describe("global recording shortcut routing", () => {
+	it("restores the HUD and dispatches the existing source picker only while idle", async () => {
+		const { hud, deps, dispatch } = setup();
+		await dispatch("openCapturePicker");
+		expect(deps.showHud).not.toHaveBeenCalled();
+		deps.getRecordingSession.mockReturnValue(null);
+		await dispatch("openCapturePicker");
+		expect(deps.showHud).toHaveBeenCalledOnce();
+		expect(hud.webContents.send).toHaveBeenCalledWith(
+			"recording-shortcut",
+			"openCapturePicker",
+		);
+	});
 	it("sends commands to the capture owner while its HUD is hidden", async () => {
 		const { hud, dispatch } = setup();
 		await dispatch("toggleRecording");
