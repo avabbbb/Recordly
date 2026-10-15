@@ -11,6 +11,7 @@ import {
 	dialog,
 	webContents as electronWebContents,
 	ipcMain,
+	globalShortcut,
 	Menu,
 	nativeImage,
 	session,
@@ -60,6 +61,7 @@ import {
 	beginHudCaptureProtection,
 	reassertHudOverlayMousePassthrough as reassertHudOverlayMouseState,
 	setHudOverlayRecordingActive,
+	toggleHudRemoteReveal,
 	showUpdateToastWindow,
 } from "./windows";
 
@@ -876,6 +878,9 @@ function createSourceSelectorWindowWrapper() {
 // explicitly with Cmd + Q.
 app.on("before-quit", () => {
 	isAppQuitting = true;
+	if (process.platform === "win32") {
+		globalShortcut.unregister("Control+Alt+H");
+	}
 	authCallbacks.close();
 	void clearRecordingTrashUndo().catch((error) =>
 		console.warn("Could not clear recording undo cache", error),
@@ -1009,6 +1014,16 @@ app.whenReady().then(async () => {
 		updateTrayMenu();
 	}
 	setupApplicationMenu();
+	if (process.platform === "win32") {
+		// Escape hatch when capture protection hides the HUD from remote desktop viewers.
+		// Keep this separate from recording-action shortcuts proposed in #956.
+		const registered = globalShortcut.register("Control+Alt+H", () => {
+			toggleHudRemoteReveal();
+		});
+		if (!registered) {
+			console.warn("[hud] Ctrl+Alt+H unavailable; use Settings > Recording to reveal the HUD");
+		}
+	}
 	await Promise.all([
 		ensureRecordingsDir(),
 		!VITE_DEV_SERVER_URL
