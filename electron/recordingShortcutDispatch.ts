@@ -21,6 +21,10 @@ export function createRecordingShortcutDispatcher(deps: {
 			return;
 		}
 		if (confirming) return;
+		if (action === "openCapturePicker") {
+			if (deps.getRecordingSession() !== null) return;
+			deps.showHud();
+		}
 		if (action === "cancelRecording") {
 			const session = deps.getRecordingSession();
 			if (session === null) return;
