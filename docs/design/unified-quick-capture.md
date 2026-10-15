@@ -1,7 +1,7 @@
 # Unified Quick Capture：截图、贴图与录屏一体化设计
 
-> 状态：**Design Proposal / 待评审** · 更新：2026-10-15  
-> 范围：`avabbbb/Recordly` Fork · 基线：2026-10-14 上游 `main`（`52a91356`）  
+> 状态：**Design Proposal / 待评审** · 更新：2026-10-15
+> 范围：`avabbbb/Recordly` Fork · 基线：2026-10-14 上游 `main`（`52a91356`）
 > 本文仅定义产品和技术设计，不代表相关功能已实现。
 
 ## 0. 一句话愿景
