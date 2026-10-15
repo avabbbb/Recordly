@@ -27,4 +27,8 @@ it("protects initial capture frames while keeping idle and failed starts visible
 	expect(shouldProtectHudCapture(true, true, false)).toBe(true);
 	expect(shouldProtectHudCapture(true, false, false)).toBe(false);
 	expect(shouldProtectHudCapture(false, true, true)).toBe(false);
+	// Remote-viewer escape hatch is temporary and never overrides the saved default.
+	expect(shouldProtectHudCapture(true, true, false, true)).toBe(false);
+	expect(shouldProtectHudCapture(true, false, true, true)).toBe(false);
+	expect(shouldProtectHudCapture(true, true, false, false)).toBe(true);
 });
