@@ -1039,7 +1039,7 @@ app.whenReady().then(async () => {
 			setHudOverlayRecordingActive(recording);
 			if (process.platform === "win32") {
 				// Only claim this global key while a recording is active.
-				// Recording-action shortcuts are handled separately by #956.
+				// Independent of start/pause/stop recording shortcuts.
 				const shortcut = "Control+Alt+H";
 				if (!recording) {
 					globalShortcut.unregister(shortcut);
