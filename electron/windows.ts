@@ -35,6 +35,8 @@ const WINDOW_ICON_PATH = path.join(
 
 let hudOverlayWindow: BrowserWindow | null = null;
 let hudOverlayHiddenFromCapture = true;
+// Session-only escape hatch for remote desktops that cannot capture protected HUD windows.
+let hudTemporarilyRevealed = false;
 let hudOverlayCaptureProtectionLoaded = false;
 let hudOverlayFallbackExpanded = false;
 let hudOverlayIgnoringMouse = true;
@@ -178,11 +180,30 @@ function applyHudOverlayCaptureProtectionToWindow(hud: BrowserWindow, enabled: b
 	try {
 		// Keep the idle HUD visible to screenshots and other capture applications.
 		hud.setContentProtection(
-			shouldProtectHudCapture(enabled, hudOverlayRecordingActive, hudCaptureStarting),
+			shouldProtectHudCapture(
+				enabled,
+				hudOverlayRecordingActive,
+				hudCaptureStarting,
+				hudTemporarilyRevealed,
+			),
 		);
 	} catch (error) {
 		console.warn("Failed to apply HUD capture protection:", error);
 	}
+}
+
+/**
+ * Temporarily allow screen-sharing clients to see the recording HUD.
+ * This intentionally also makes it visible to recorders until toggled back.
+ * The saved capture-protection preference is not modified.
+ */
+export function toggleHudRemoteReveal(): boolean {
+	if (process.platform !== "win32" || (!hudOverlayRecordingActive && !hudCaptureStarting)) {
+		return false;
+	}
+	hudTemporarilyRevealed = !hudTemporarilyRevealed;
+	reassertHudOverlayCaptureProtection();
+	return hudTemporarilyRevealed;
 }
 
 export function beginHudCaptureProtection(): void {
@@ -740,6 +761,7 @@ export function reassertHudOverlayMousePassthrough(): void {
 
 export function setHudOverlayRecordingActive(recording: boolean): void {
 	hudCaptureStarting = false;
+	if (!recording) hudTemporarilyRevealed = false;
 	hudOverlayRecordingActive = Boolean(recording);
 	notifyEditorMode();
 	hudOverlayFallbackExpanded = false;
