@@ -1,7 +1,9 @@
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ArrowClockwiseIcon,
-	House,
 	DotsThreeVerticalIcon,
+	House,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MinusIcon,
@@ -11,9 +13,8 @@ import {
 	VideoCameraSlashIcon,
 	XIcon,
 } from "@/components/ui/icons";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/components/ui/toast";
 import { useScopedT } from "../../contexts/I18nContext";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
@@ -38,7 +39,6 @@ import {
 	useLaunchPopoverCoordinator,
 } from "./popovers/LaunchPopoverCoordinator";
 import { MicPopover } from "./popovers/MicPopover";
-import { toast } from "@/components/ui/toast";
 import { WebcamPopover } from "./popovers/WebcamPopover";
 import { RecordingControls } from "./RecordingControls";
 
@@ -80,6 +80,38 @@ function LaunchWindowContent() {
 	} = useScreenRecorder();
 
 	const { elapsed, formatTime } = useRecordingTimer(recording, paused);
+	const shortcutInFlight = useRef(false);
+	useEffect(
+		() =>
+			window.electronAPI?.onRecordingShortcut?.((action) => {
+				if (shortcutInFlight.current || finalizing || countdownActive) return;
+				shortcutInFlight.current = true;
+				void (async () => {
+					try {
+						if (action === "toggleRecording") await toggleRecording();
+						else if (action === "togglePause" && recording) {
+							if (paused) await resumeRecording();
+							else await pauseRecording();
+						} else if (action === "cancelRecording" && recording)
+							await cancelRecording();
+					} catch (error) {
+						toast.error(String(error));
+					} finally {
+						shortcutInFlight.current = false;
+					}
+				})();
+			}),
+		[
+			recording,
+			paused,
+			finalizing,
+			countdownActive,
+			toggleRecording,
+			pauseRecording,
+			resumeRecording,
+			cancelRecording,
+		],
+	);
 	const hudContentRef = useRef<HTMLDivElement>(null);
 	const hudBarRef = useRef<HTMLDivElement>(null);
 
