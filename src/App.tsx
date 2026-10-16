@@ -1,9 +1,9 @@
 import { Card } from "@heroui/react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { useI18n } from "./contexts/I18nContext";
-import { getStartupView } from "./lib/startupView";
 import { HomeLoadingSkeleton } from "./components/video-editor/dashboard/HomeLoadingSkeleton";
 import { EditorLoadingSkeleton } from "./components/video-editor/layout/EditorLoadingSkeleton";
+import { useI18n } from "./contexts/I18nContext";
+import { getStartupView } from "./lib/startupView";
 
 const HudWindow = lazy(() => import("./components/launch/HudWindow"));
 const SourceSelector = lazy(() =>
@@ -23,6 +23,7 @@ const UpdateToastWindow = lazy(() =>
 );
 const EditorWindow = lazy(() => import("./components/video-editor/EditorWindow"));
 const CapturePicker = lazy(() => import("./components/capture-picker/CapturePicker"));
+const ScreenshotWindow = lazy(() => import("./components/screenshot/ScreenshotWindow"));
 
 export default function App() {
 	const [windowType] = useState(
@@ -59,6 +60,13 @@ export default function App() {
 	}, [windowType]);
 
 	useEffect(() => {
+		if (windowType === "screenshot") {
+			document.title =
+				new URLSearchParams(window.location.search).get("pinned") === "true"
+					? "Recordly Pin"
+					: "Recordly Screenshot";
+			return;
+		}
 		document.title =
 			windowType === "editor"
 				? t("app.editorTitle", "Recordly Editor")
@@ -67,6 +75,9 @@ export default function App() {
 
 	let content;
 	switch (windowType) {
+		case "screenshot":
+			content = <ScreenshotWindow />;
+			break;
 		case "hud-overlay":
 			content = <HudWindow />;
 			break;

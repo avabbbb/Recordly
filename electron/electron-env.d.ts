@@ -251,6 +251,26 @@ interface Window {
 			message?: string;
 		}>;
 		completeCapturePick: (pick: CapturePick | null) => Promise<void>;
+		startScreenshot: () => Promise<import("../src/lib/screenshot").ScreenshotResult>;
+		getScreenshotContext: (displayId: number) => Promise<{
+			displayBounds: import("../src/lib/screenshot").ScreenshotRect;
+			allowArea: boolean;
+			lastArea: null;
+			windows: CapturePickerWindow[];
+			cursor: { x: number; y: number };
+			background: string;
+		}>;
+		completeScreenshotPick: (
+			pick: {
+				displayId: number;
+				rect: import("../src/lib/screenshot").ScreenshotRect;
+			} | null,
+		) => Promise<import("../src/lib/screenshot").ScreenshotResult>;
+		getScreenshotDocument: () => Promise<import("../src/lib/screenshot").ScreenshotDocument>;
+		screenshotAction: (
+			action: "copy" | "save" | "pin" | "close" | "opacity" | "zoom",
+			value?: string | number,
+		) => Promise<import("../src/lib/screenshot").ScreenshotResult>;
 		getCapturePickerContext: (displayId: number) => Promise<{
 			displayBounds: CaptureArea | null;
 			lastArea: CaptureArea | null;
@@ -947,6 +967,20 @@ interface Window {
 			enabled: boolean;
 			error?: string;
 		}>;
+		/** enabled: stored preference; active: mode this process started with (switches are startup-only). */
+		getLightweightMode: () => Promise<{ enabled: boolean; active: boolean }>;
+		setLightweightMode: (enabled: boolean) => Promise<{
+			success: boolean;
+			enabled: boolean;
+			error?: string;
+		}>;
+		/** Finishes a GIF-mode capture (convert + save) instead of opening the editor. */
+		completeGifCapture: (videoPath: string) => Promise<{ handled: boolean }>;
+		/** Whether the next recording opens the editor or is saved straight to GIF. */
+		getCaptureOutputMode: () => Promise<"editor" | "gif">;
+		/** HUD-only; other senders get the current mode back unchanged. */
+		setCaptureOutputMode: (mode: "editor" | "gif") => Promise<"editor" | "gif">;
+		onCaptureOutputModeChanged: (callback: (mode: "editor" | "gif") => void) => () => void;
 		previewUpdateToast: () => Promise<{ success: boolean }>;
 		checkForAppUpdates: () => Promise<{ success: boolean; logPath: string }>;
 		onUpdateToastStateChanged: (

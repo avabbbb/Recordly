@@ -4,6 +4,7 @@ export const DEFAULT_RECORDING_SHORTCUTS = {
 	toggleHud: "CommandOrControl+Alt+H",
 	cancelRecording: "CommandOrControl+Alt+Shift+X",
 	openCapturePicker: "CommandOrControl+Shift+2",
+	takeScreenshot: "CommandOrControl+Alt+S",
 };
 
 export type RecordingShortcutAction = keyof typeof DEFAULT_RECORDING_SHORTCUTS;
@@ -19,6 +20,7 @@ export const RECORDING_SHORTCUT_LABELS: Record<RecordingShortcutAction, string> 
 	toggleHud: "Show / hide controls",
 	cancelRecording: "Cancel recording (with confirmation)",
 	openCapturePicker: "Choose recording source",
+	takeScreenshot: "Take screenshot",
 };
 
 // A deliberately small accelerator grammar makes configuration errors explicit.

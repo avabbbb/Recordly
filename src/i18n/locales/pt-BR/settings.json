@@ -258,5 +258,11 @@
 		"title": "Atualizações",
 		"experimental": "Atualizações experimentais",
 		"saveFailed": "Falha ao alterar o canal de atualização."
+	},
+	"performance": {
+		"lightweight": "Modo leve",
+		"lightweightDescription": "Em repouso fica só na bandeja com memória mínima; o gravador e o editor abrem quando necessário. Desative para exportações mais rápidas com GPU.",
+		"lightweightRestart": "Reinicie o Recordly para aplicar a alteração.",
+		"saveFailed": "Falha ao alterar o modo leve."
 	}
 }

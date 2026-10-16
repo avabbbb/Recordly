@@ -1,0 +1,135 @@
+.screenshot-app {
+	height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	background: #18181b;
+	color: #fafafa;
+	font:
+		13px system-ui,
+		sans-serif;
+}
+.screenshot-toolbar {
+	padding: 14px 16px 10px;
+	border-bottom: 1px solid #3f3f46;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.screenshot-toolbar strong {
+	font-size: 15px;
+}
+.screenshot-toolbar small {
+	margin-left: 12px;
+	color: #a1a1aa;
+	font-size: 12px;
+	font-weight: normal;
+}
+.screenshot-tools {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.screenshot-app button {
+	border: 1px solid #52525b;
+	border-radius: 6px;
+	padding: 5px 10px;
+	background: #27272a;
+	cursor: pointer;
+	color: inherit;
+	white-space: nowrap;
+}
+.screenshot-app button:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+.screenshot-app button[aria-pressed="true"] {
+	background: #2563eb;
+	border-color: #60a5fa;
+}
+.screenshot-app button:focus-visible,
+.screenshot-app input:focus-visible {
+	outline: 2px solid #60a5fa;
+	outline-offset: 2px;
+}
+.screenshot-tools label {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	color: #d4d4d8;
+}
+.screenshot-tools input {
+	width: 145px;
+	border: 1px solid #52525b;
+	border-radius: 4px;
+	background: #09090b;
+	color: white;
+	padding: 4px 6px;
+}
+.color-preview {
+	width: 18px;
+	height: 18px;
+	border: 1px solid #a1a1aa;
+	border-radius: 50%;
+}
+.toolbar-spacer {
+	flex: 1;
+}
+.screenshot-canvas-area {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 18px;
+	background: #09090b;
+}
+.screenshot-canvas-area canvas {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+	width: auto;
+	height: auto;
+	touch-action: none;
+	cursor: crosshair;
+	box-shadow: 0 8px 30px #0008;
+}
+.screenshot-app footer {
+	padding: 7px 16px;
+	min-height: 30px;
+	color: #a1a1aa;
+}
+.pin-bar {
+	height: 32px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2px 6px;
+	background: #27272a;
+	font-size: 11px;
+	color: #a1a1aa;
+}
+.pin-bar button {
+	border: 0;
+	padding: 2px 6px;
+}
+.pinned-image {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	object-fit: contain;
+}
+.pin-opacity {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 3px 8px;
+	height: 25px;
+	font-size: 10px;
+}
+.pin-opacity input {
+	flex: 1;
+	min-width: 30px;
+}

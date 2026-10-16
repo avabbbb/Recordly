@@ -258,5 +258,11 @@
 		"title": "Mises à jour",
 		"experimental": "Mises à jour expérimentales",
 		"saveFailed": "Impossible de changer le canal de mise à jour."
+	},
+	"performance": {
+		"lightweight": "Mode léger",
+		"lightweightDescription": "Au repos, seule l’icône de la barre système reste, avec un minimum de mémoire ; l’enregistreur et l’éditeur s’ouvrent à la demande. Désactivez-le pour des exports accélérés par GPU.",
+		"lightweightRestart": "Redémarrez Recordly pour appliquer ce changement.",
+		"saveFailed": "Impossible de changer le mode léger."
 	}
 }

@@ -32,6 +32,7 @@ export async function installDesktopBridge(
 								toggleHud: "CommandOrControl+Alt+H",
 								cancelRecording: "CommandOrControl+Alt+Shift+X",
 								openCapturePicker: "CommandOrControl+Shift+2",
+								takeScreenshot: "CommandOrControl+Alt+S",
 							}),
 					),
 					errors: [],

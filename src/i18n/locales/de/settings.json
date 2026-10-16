@@ -258,5 +258,11 @@
 		"title": "Updates",
 		"experimental": "Experimentelle Updates",
 		"saveFailed": "Update-Kanal konnte nicht geändert werden."
+	},
+	"performance": {
+		"lightweight": "Leichtgewichtsmodus",
+		"lightweightDescription": "Im Leerlauf nur im Tray mit minimalem Speicher; Recorder und Editor öffnen bei Bedarf. Ausschalten für schnellere GPU-beschleunigte Exporte.",
+		"lightweightRestart": "Starte Recordly neu, um die Änderung anzuwenden.",
+		"saveFailed": "Leichtgewichtsmodus konnte nicht geändert werden."
 	}
 }
