@@ -1020,6 +1020,11 @@ export function SettingsPanel({
 	);
 	const [experimentalUpdatesEnabled, setExperimentalUpdatesEnabled] = useState(false);
 	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
+	const [lightweightMode, setLightweightMode] = useState<{
+		enabled: boolean;
+		active: boolean;
+	} | null>(null);
+	const [savingLightweightMode, setSavingLightweightMode] = useState(false);
 	const { openConfig: openShortcutsConfig } = useShortcuts();
 	const [internalActiveEffectSection] = useState<EditorEffectSection>("scene");
 	const activeEffectSection = activeEffectSectionProp ?? internalActiveEffectSection;
@@ -1075,6 +1080,47 @@ export function SettingsPanel({
 			);
 		} finally {
 			setSavingExperimentalUpdates(false);
+		}
+	};
+
+	useEffect(() => {
+		let cancelled = false;
+		void window.electronAPI
+			.getLightweightMode()
+			.then((mode) => {
+				if (!cancelled) setLightweightMode(mode);
+			})
+			.catch((error) => {
+				console.error("Failed to load lightweight mode preference:", error);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const updateLightweightModePreference = async (enabled: boolean) => {
+		if (!lightweightMode) return;
+		const previous = lightweightMode;
+		setLightweightMode({ ...previous, enabled });
+		setSavingLightweightMode(true);
+		try {
+			const result = await window.electronAPI.setLightweightMode(enabled);
+			setLightweightMode({ ...previous, enabled: result.enabled });
+			if (!result.success) {
+				toast.error(
+					result.error ||
+						tSettings("performance.saveFailed", "Failed to change lightweight mode."),
+				);
+			}
+		} catch (error) {
+			setLightweightMode(previous);
+			toast.error(
+				tSettings("performance.saveFailed", "Failed to change lightweight mode.") +
+					" " +
+					String(error),
+			);
+		} finally {
+			setSavingLightweightMode(false);
 		}
 	};
 
@@ -2316,6 +2362,30 @@ export function SettingsPanel({
 								))}
 							</SelectContent>
 						</Select>
+					</SettingsRow>
+
+					<SettingsRow
+						title={tSettings("performance.lightweight", "Lightweight mode")}
+						description={
+							lightweightMode && lightweightMode.enabled !== lightweightMode.active
+								? tSettings(
+										"performance.lightweightRestart",
+										"Restart Recordly to apply this change.",
+									)
+								: tSettings(
+										"performance.lightweightDescription",
+										"Idle in the tray with minimal memory; the recorder and editor open on demand. Turn off for faster GPU-accelerated exports.",
+									)
+						}
+					>
+						<Switch
+							checked={lightweightMode?.enabled ?? true}
+							disabled={!lightweightMode || savingLightweightMode}
+							onCheckedChange={(enabled) =>
+								void updateLightweightModePreference(enabled)
+							}
+							aria-label={tSettings("performance.lightweight", "Lightweight mode")}
+						/>
 					</SettingsRow>
 				</SettingsCategory>
 				<SettingsCategory category="advanced">

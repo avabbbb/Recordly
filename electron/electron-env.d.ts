@@ -967,6 +967,15 @@ interface Window {
 			enabled: boolean;
 			error?: string;
 		}>;
+		/** enabled: stored preference; active: mode this process started with (switches are startup-only). */
+		getLightweightMode: () => Promise<{ enabled: boolean; active: boolean }>;
+		setLightweightMode: (enabled: boolean) => Promise<{
+			success: boolean;
+			enabled: boolean;
+			error?: string;
+		}>;
+		/** Finishes a tray-started GIF capture (convert + save) instead of opening the editor. */
+		completeGifCapture: (videoPath: string) => Promise<{ handled: boolean }>;
 		previewUpdateToast: () => Promise<{ success: boolean }>;
 		checkForAppUpdates: () => Promise<{ success: boolean; logPath: string }>;
 		onUpdateToastStateChanged: (

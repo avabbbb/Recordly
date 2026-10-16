@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getGpuSwitches, shouldForceLinuxEgl } from "./gpuSwitches";
+import { getGpuSwitches, resolveLightweightMode, shouldForceLinuxEgl } from "./gpuSwitches";
 
 describe("shouldForceLinuxEgl", () => {
 	it("does not force EGL in a Wayland session", () => {
@@ -63,5 +63,26 @@ describe("getGpuSwitches", () => {
 			useGl: "egl",
 			disableFeatures: ["VaapiVideoDecoder", "VaapiVideoEncoder"],
 		});
+	});
+});
+
+describe("resolveLightweightMode", () => {
+	it("defaults to lightweight when the setting is unset", () => {
+		expect(resolveLightweightMode(null, {})).toBe(true);
+	});
+
+	it("honors an explicit opt-out in app settings", () => {
+		expect(resolveLightweightMode(false, {})).toBe(false);
+	});
+
+	it("lets RECORDLY_LIGHTWEIGHT override the stored setting", () => {
+		expect(resolveLightweightMode(true, { RECORDLY_LIGHTWEIGHT: "0" })).toBe(false);
+		expect(resolveLightweightMode(false, { RECORDLY_LIGHTWEIGHT: "1" })).toBe(true);
+	});
+
+	it("always uses full GPU acceleration for smoke exports", () => {
+		expect(
+			resolveLightweightMode(true, { RECORDLY_SMOKE_EXPORT: "1", RECORDLY_LIGHTWEIGHT: "1" }),
+		).toBe(false);
 	});
 });

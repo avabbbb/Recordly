@@ -748,6 +748,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			setFinalizing(false);
+			let handledAsGif = false;
+			try {
+				handledAsGif = (await window.electronAPI.completeGifCapture(videoPath)).handled;
+			} catch (error) {
+				console.error("GIF capture failed; opening the editor instead:", error);
+			}
+			if (handledAsGif) return;
 			await window.electronAPI.switchToEditor();
 			console.log(
 				`[PERF:RENDERER] Finalize Session & Switch to Editor: COMPLETED in ${(performance.now() - start).toFixed(2)}ms`,

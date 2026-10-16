@@ -258,5 +258,11 @@
 		"title": "更新",
 		"experimental": "实验性更新",
 		"saveFailed": "无法更改更新频道。"
+	},
+	"performance": {
+		"lightweight": "轻量模式",
+		"lightweightDescription": "空闲时仅驻留托盘，内存占用最低；录制器和编辑器按需打开。关闭后导出可使用 GPU 加速。",
+		"lightweightRestart": "重启 Recordly 后生效。",
+		"saveFailed": "无法更改轻量模式。"
 	}
 }

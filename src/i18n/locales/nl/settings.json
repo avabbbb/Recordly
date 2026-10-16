@@ -258,5 +258,11 @@
 		"title": "Updates",
 		"experimental": "Experimentele updates",
 		"saveFailed": "Kan het updatekanaal niet wijzigen."
+	},
+	"performance": {
+		"lightweight": "Lichte modus",
+		"lightweightDescription": "In rust alleen in het systeemvak met minimaal geheugen; recorder en editor openen wanneer nodig. Zet uit voor snellere GPU-versnelde exports.",
+		"lightweightRestart": "Start Recordly opnieuw om deze wijziging toe te passen.",
+		"saveFailed": "Kan de lichte modus niet wijzigen."
 	}
 }

@@ -258,5 +258,11 @@
 		"title": "更新",
 		"experimental": "實驗性更新",
 		"saveFailed": "無法變更更新頻道。"
+	},
+	"performance": {
+		"lightweight": "輕量模式",
+		"lightweightDescription": "閒置時僅常駐系統匣，記憶體占用最低；錄製器與編輯器按需開啟。關閉後匯出可使用 GPU 加速。",
+		"lightweightRestart": "重新啟動 Recordly 後生效。",
+		"saveFailed": "無法變更輕量模式。"
 	}
 }
