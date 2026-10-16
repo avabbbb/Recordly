@@ -178,6 +178,25 @@ function LaunchWindowContent() {
 	const pickerPending = useRef(false);
 	const [isPickerPending, setIsPickerPending] = useState(false);
 	const [sourceReady, setSourceReady] = useState(false);
+	// Main owns the mode so tray entries and this toolbar stay in sync.
+	const [captureMode, setCaptureMode] = useState<"editor" | "gif">("editor");
+	useEffect(() => {
+		let mounted = true;
+		void window.electronAPI?.getCaptureOutputMode?.().then((mode) => {
+			if (mounted) setCaptureMode(mode);
+		});
+		const cleanup = window.electronAPI?.onCaptureOutputModeChanged?.((mode) => {
+			if (mounted) setCaptureMode(mode);
+		});
+		return () => {
+			mounted = false;
+			cleanup?.();
+		};
+	}, []);
+	const selectCaptureMode = useCallback((mode: "editor" | "gif") => {
+		setCaptureMode(mode);
+		void window.electronAPI?.setCaptureOutputMode?.(mode).then(setCaptureMode);
+	}, []);
 	const handlePickOnScreen = useCallback(async () => {
 		if (pickerPending.current || recording || finalizing) return;
 		pickerPending.current = true;
@@ -324,6 +343,37 @@ function LaunchWindowContent() {
 			>
 				Screenshot
 			</Button>
+			<div
+				role="radiogroup"
+				aria-label="Recording output"
+				className={`flex items-center ${styles.electronNoDrag}`}
+			>
+				<Button
+					variant="ghost"
+					size="sm"
+					role="radio"
+					aria-checked={captureMode === "gif"}
+					className={captureMode === "gif" ? "text-accent" : ""}
+					title="Record a region straight to GIF (no editor)"
+					disabled={recording || finalizing}
+					onClick={() => selectCaptureMode("gif")}
+				>
+					GIF
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					role="radio"
+					aria-checked={captureMode === "editor"}
+					className={captureMode === "editor" ? "text-accent" : ""}
+					title="Record video and open the editor"
+					disabled={recording || finalizing}
+					onClick={() => selectCaptureMode("editor")}
+				>
+					Video
+				</Button>
+			</div>
+			<Separator orientation="vertical" className="mx-[5px] h-6 self-center" />
 			<Button
 				variant="ghost"
 				size="lg"
@@ -489,7 +539,11 @@ function LaunchWindowContent() {
 			<ArrowClockwiseIcon size={15} className={styles.finalizingSpin} />
 			<div className={styles.finalizingCopy}>
 				<span>{t("recording.preparing", "Preparing recording")}</span>
-				<small>{t("recording.preparingSubtitle", "Opening the editor in a moment")}</small>
+				<small>
+					{captureMode === "gif"
+						? "Saving your GIF in a moment"
+						: t("recording.preparingSubtitle", "Opening the editor in a moment")}
+				</small>
 			</div>
 		</div>
 	);

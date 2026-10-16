@@ -963,6 +963,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	completeGifCapture: (videoPath: string) => {
 		return ipcRenderer.invoke("complete-gif-capture", videoPath);
 	},
+	getCaptureOutputMode: () => ipcRenderer.invoke("get-capture-output-mode"),
+	setCaptureOutputMode: (mode: "editor" | "gif") =>
+		ipcRenderer.invoke("set-capture-output-mode", mode),
+	onCaptureOutputModeChanged: (callback: (mode: "editor" | "gif") => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, mode: "editor" | "gif") =>
+			callback(mode);
+		ipcRenderer.on("capture-output-mode-changed", listener);
+		return () => {
+			ipcRenderer.removeListener("capture-output-mode-changed", listener);
+		};
+	},
 	previewUpdateToast: () => {
 		return ipcRenderer.invoke("preview-update-toast");
 	},

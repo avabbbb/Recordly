@@ -974,8 +974,13 @@ interface Window {
 			enabled: boolean;
 			error?: string;
 		}>;
-		/** Finishes a tray-started GIF capture (convert + save) instead of opening the editor. */
+		/** Finishes a GIF-mode capture (convert + save) instead of opening the editor. */
 		completeGifCapture: (videoPath: string) => Promise<{ handled: boolean }>;
+		/** Whether the next recording opens the editor or is saved straight to GIF. */
+		getCaptureOutputMode: () => Promise<"editor" | "gif">;
+		/** HUD-only; other senders get the current mode back unchanged. */
+		setCaptureOutputMode: (mode: "editor" | "gif") => Promise<"editor" | "gif">;
+		onCaptureOutputModeChanged: (callback: (mode: "editor" | "gif") => void) => () => void;
 		previewUpdateToast: () => Promise<{ success: boolean }>;
 		checkForAppUpdates: () => Promise<{ success: boolean; logPath: string }>;
 		onUpdateToastStateChanged: (
