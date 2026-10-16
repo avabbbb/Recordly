@@ -116,15 +116,38 @@ export function resolveSystemFfprobeBinaryPath(): string | null {
 	return null;
 }
 
+let cachedFfmpegBinaryPath: string | null = null;
+
+// existsSync alone is not enough: a bundled binary can be present yet unrunnable
+// (EFTYPE / corrupted download / blocked by OS policy). Probe it once and cache.
+function isRunnableBinary(binaryPath: string): boolean {
+	if (!existsSync(binaryPath)) return false;
+	const probe = spawnSync(binaryPath, ["-version"], {
+		stdio: "ignore",
+		timeout: 10_000,
+		windowsHide: true,
+	});
+	return !probe.error && probe.status === 0;
+}
+
 export function getFfmpegBinaryPath(): string {
+	if (cachedFfmpegBinaryPath) return cachedFfmpegBinaryPath;
+
 	const ffmpegStatic = loadFfmpegStatic();
 	if (ffmpegStatic && typeof ffmpegStatic === "string") {
 		const bundledPath = app.isPackaged
 			? ffmpegStatic.replace(/\.asar([/\\])/, ".asar.unpacked$1")
 			: ffmpegStatic;
 
-		if (existsSync(bundledPath)) {
+		if (isRunnableBinary(bundledPath)) {
+			cachedFfmpegBinaryPath = bundledPath;
 			return bundledPath;
+		}
+		if (existsSync(bundledPath)) {
+			console.warn(
+				"[ffmpeg] Bundled binary is not runnable; falling back to system FFmpeg:",
+				bundledPath,
+			);
 		}
 	}
 
