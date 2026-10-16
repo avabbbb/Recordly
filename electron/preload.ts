@@ -954,6 +954,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setExperimentalUpdatesEnabled: (enabled: boolean) => {
 		return ipcRenderer.invoke("set-experimental-updates-enabled", enabled);
 	},
+	getLightweightMode: () => {
+		return ipcRenderer.invoke("get-lightweight-mode");
+	},
+	setLightweightMode: (enabled: boolean) => {
+		return ipcRenderer.invoke("set-lightweight-mode", enabled);
+	},
+	completeGifCapture: (videoPath: string) => {
+		return ipcRenderer.invoke("complete-gif-capture", videoPath);
+	},
 	previewUpdateToast: () => {
 		return ipcRenderer.invoke("preview-update-toast");
 	},

@@ -258,5 +258,11 @@
 		"title": "Aggiornamenti",
 		"experimental": "Aggiornamenti sperimentali",
 		"saveFailed": "Impossibile cambiare il canale di aggiornamento."
+	},
+	"performance": {
+		"lightweight": "Modalità leggera",
+		"lightweightDescription": "A riposo resta solo nella barra di sistema con memoria minima; registratore ed editor si aprono quando servono. Disattivala per esportazioni più veloci con GPU.",
+		"lightweightRestart": "Riavvia Recordly per applicare la modifica.",
+		"saveFailed": "Impossibile cambiare la modalità leggera."
 	}
 }

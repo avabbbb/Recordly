@@ -64,3 +64,34 @@ export function getGpuSwitches(
 
 	return {};
 }
+
+/**
+ * Lightweight mode (default ON): skip the aggressive global GPU switches that
+ * measurably add ~300 MB of idle private memory (browser + GPU process).
+ * The editor still gets WebGPU where Chromium enables it by default and falls
+ * back to WebGL otherwise. Chromium switches are startup-only, so a change
+ * takes effect on the next launch.
+ */
+export const LIGHTWEIGHT_MODE_SETTING_KEY = "lightweightMode";
+
+export const PERFORMANCE_GPU_SWITCHES: readonly string[] = [
+	"ignore-gpu-blocklist",
+	"enable-unsafe-webgpu",
+	"enable-gpu-rasterization",
+];
+
+export function resolveLightweightMode(
+	storedValue: unknown,
+	env: NodeJS.ProcessEnv = process.env,
+): boolean {
+	if (env.RECORDLY_SMOKE_EXPORT === "1") {
+		return false;
+	}
+	if (env.RECORDLY_LIGHTWEIGHT === "0") {
+		return false;
+	}
+	if (env.RECORDLY_LIGHTWEIGHT === "1") {
+		return true;
+	}
+	return storedValue !== false;
+}
