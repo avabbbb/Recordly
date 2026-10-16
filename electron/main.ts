@@ -767,15 +767,31 @@ ipcMain.handle("set-lightweight-mode", (_event, enabled: unknown) => {
 	}
 });
 
-// Set by the tray capture entries; consumed when the HUD finishes a recording.
-let captureOutputMode: "editor" | "gif" = "editor";
+// Owned by main so the tray and the HUD toolbar agree; read when the HUD finishes a recording.
+type CaptureOutputMode = "editor" | "gif";
+let captureOutputMode: CaptureOutputMode = "editor";
+
+function setCaptureOutputMode(mode: CaptureOutputMode) {
+	if (captureOutputMode === mode) return;
+	captureOutputMode = mode;
+	const hud = getHudOverlayWindow();
+	if (hud && !hud.isDestroyed()) hud.webContents.send("capture-output-mode-changed", mode);
+}
+
+ipcMain.handle("get-capture-output-mode", () => captureOutputMode);
+
+ipcMain.handle("set-capture-output-mode", (event, mode: unknown) => {
+	const hud = getHudOverlayWindow();
+	if (!hud || event.sender !== hud.webContents) return captureOutputMode;
+	if (mode === "editor" || mode === "gif") setCaptureOutputMode(mode);
+	return captureOutputMode;
+});
 
 ipcMain.handle("complete-gif-capture", async (event, videoPath: unknown) => {
 	const hud = getHudOverlayWindow();
 	if (captureOutputMode !== "gif" || !hud || event.sender !== hud.webContents) {
 		return { handled: false };
 	}
-	captureOutputMode = "editor";
 	if (typeof videoPath !== "string" || !videoPath) {
 		return { handled: false };
 	}
@@ -854,7 +870,6 @@ function updateTrayMenu(recording: boolean = false) {
 				{
 					label: "Open Recorder",
 					click: () => {
-						captureOutputMode = "editor";
 						if (!showHudOverlayFromTray()) {
 							focusOrCreateMainWindow();
 						}
@@ -1192,7 +1207,7 @@ app.whenReady().then(async () => {
 		});
 	};
 	trayRecordAction = (mode) => {
-		captureOutputMode = mode;
+		setCaptureOutputMode(mode);
 		void (async () => {
 			if (!getHudOverlayWindow()) await openHudForShortcut();
 			await dispatchRecordingShortcut("openCapturePicker");
