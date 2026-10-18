@@ -1234,7 +1234,10 @@ export function closeCountdownWindow(): void {
  * Covers every display with a transparent overlay for picking what to record.
  * Each overlay renders the `capture-picker` window and reports back over IPC.
  */
-export function createCapturePickerWindows(onClosed: () => void): BrowserWindow[] {
+export function createCapturePickerWindows(
+	onClosed: () => void,
+	purpose: "recording" | "screenshot" = "recording",
+): BrowserWindow[] {
 	closeCapturePickerWindows();
 	const cursorDisplayId = getScreen().getDisplayNearestPoint(
 		getScreen().getCursorScreenPoint(),
@@ -1295,7 +1298,7 @@ export function createCapturePickerWindows(onClosed: () => void): BrowserWindow[
 				if (wasOpen) onClosed();
 			});
 
-			const query = { windowType: "capture-picker", displayId: String(display.id) };
+			const query = { windowType: "capture-picker", displayId: String(display.id), purpose };
 			if (VITE_DEV_SERVER_URL) {
 				win.loadURL(`${VITE_DEV_SERVER_URL}?${new URLSearchParams(query).toString()}`);
 			} else {
@@ -1308,6 +1311,16 @@ export function createCapturePickerWindows(onClosed: () => void): BrowserWindow[
 
 export function getCapturePickerWindows(): BrowserWindow[] {
 	return [...capturePickerWindows];
+}
+
+let captureSelectionBusy = false;
+export function beginCaptureSelection(): boolean {
+	if (captureSelectionBusy) return false;
+	captureSelectionBusy = true;
+	return true;
+}
+export function endCaptureSelection(): void {
+	captureSelectionBusy = false;
 }
 
 export function closeCapturePickerWindows(): void {

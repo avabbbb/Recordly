@@ -258,5 +258,11 @@
 		"micLabel": "Source Mic",
 		"mixedLabel": "Source",
 		"deleteRegion": "Delete Audio"
+	},
+	"performance": {
+		"lightweight": "Lightweight mode",
+		"lightweightDescription": "Idle in the tray with minimal memory; the recorder and editor open on demand. Turn off for faster GPU-accelerated exports.",
+		"lightweightRestart": "Restart Recordly to apply this change.",
+		"saveFailed": "Failed to change lightweight mode."
 	}
 }

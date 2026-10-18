@@ -16,9 +16,16 @@ import {
 	Tray,
 } from "electron";
 import { RECORDINGS_DIR } from "./appPaths";
+import { readAppSetting, writeAppSetting } from "./appSettingsStore";
 import { createAuthCallbackController } from "./authCallback";
 import { showCursor } from "./cursorHider";
-import { getGpuSwitches } from "./gpuSwitches";
+import { convertVideoToGif } from "./gifCapture";
+import {
+	getGpuSwitches,
+	LIGHTWEIGHT_MODE_SETTING_KEY,
+	PERFORMANCE_GPU_SWITCHES,
+	resolveLightweightMode,
+} from "./gpuSwitches";
 import {
 	cleanupAllExportStreams,
 	cleanupNativeVideoExportSessions,
@@ -35,6 +42,7 @@ import { createRecordingShortcutDispatcher } from "./recordingShortcutDispatch";
 import { registerRecordingShortcuts } from "./recordingShortcuts";
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
 import { createSaveBeforeCloseController } from "./saveBeforeClose";
+import { registerScreenshotHandlers } from "./screenshot";
 import {
 	checkForAppUpdates,
 	deferUpdateReminder,
@@ -80,9 +88,15 @@ function ignoreBrokenConsolePipe(stream: NodeJS.WritableStream | undefined) {
 ignoreBrokenConsolePipe(process.stdout);
 ignoreBrokenConsolePipe(process.stderr);
 
-app.commandLine.appendSwitch("ignore-gpu-blocklist");
-app.commandLine.appendSwitch("enable-unsafe-webgpu");
-app.commandLine.appendSwitch("enable-gpu-rasterization");
+const LIGHTWEIGHT_MODE = resolveLightweightMode(
+	readAppSetting(LIGHTWEIGHT_MODE_SETTING_KEY),
+	process.env,
+);
+if (!LIGHTWEIGHT_MODE) {
+	for (const gpuSwitch of PERFORMANCE_GPU_SWITCHES) {
+		app.commandLine.appendSwitch(gpuSwitch);
+	}
+}
 
 app.on("web-contents-created", (_event, contents) => {
 	if (!shouldHardenWebContentsType(contents.getType())) {
@@ -243,7 +257,12 @@ function closeEditorWindowToHud(window: BrowserWindow | null) {
 	if (mainWindow === window) {
 		mainWindow = null;
 	}
-	createWindow();
+	if (LIGHTWEIGHT_MODE) {
+		// Return to tray-only idle: release the hidden HUD renderer too.
+		getHudOverlayWindow()?.close();
+	} else {
+		createWindow();
+	}
 	closeEditorWindowBypassingUnsavedPrompt(window);
 }
 
@@ -593,9 +612,10 @@ function createTray() {
 }
 
 function shouldUseTray() {
-	// macOS and Windows expose Recordly through their Dock/taskbar. Keep the
-	// tray entry only on Linux, where it remains the primary app entry point.
-	return process.platform === "linux";
+	// Lightweight mode keeps only the tray resident on every platform; the
+	// recorder HUD and editor are created on demand. Otherwise the tray is
+	// Linux-only, where it remains the primary app entry point.
+	return process.platform === "linux" || LIGHTWEIGHT_MODE;
 }
 
 function getPublicAssetPath(filename: string) {
@@ -721,6 +741,79 @@ ipcMain.handle("set-experimental-updates-enabled", async (_event, enabled: unkno
 	}
 });
 
+// Lightweight mode only takes effect at startup (Chromium switches, tray-only idle),
+// so report both the stored preference and the mode this process is running in.
+ipcMain.handle("get-lightweight-mode", () => {
+	return {
+		enabled: readAppSetting(LIGHTWEIGHT_MODE_SETTING_KEY) !== false,
+		active: LIGHTWEIGHT_MODE,
+	};
+});
+
+ipcMain.handle("set-lightweight-mode", (_event, enabled: unknown) => {
+	if (typeof enabled !== "boolean") {
+		return { success: false, enabled: readAppSetting(LIGHTWEIGHT_MODE_SETTING_KEY) !== false };
+	}
+	try {
+		writeAppSetting(LIGHTWEIGHT_MODE_SETTING_KEY, enabled);
+		return { success: true, enabled };
+	} catch (error) {
+		console.error("Failed to save lightweight mode preference:", error);
+		return {
+			success: false,
+			enabled: readAppSetting(LIGHTWEIGHT_MODE_SETTING_KEY) !== false,
+			error: String(error),
+		};
+	}
+});
+
+// Owned by main so the tray and the HUD toolbar agree; read when the HUD finishes a recording.
+type CaptureOutputMode = "editor" | "gif";
+let captureOutputMode: CaptureOutputMode = "editor";
+
+function setCaptureOutputMode(mode: CaptureOutputMode) {
+	if (captureOutputMode === mode) return;
+	captureOutputMode = mode;
+	const hud = getHudOverlayWindow();
+	if (hud && !hud.isDestroyed()) hud.webContents.send("capture-output-mode-changed", mode);
+}
+
+ipcMain.handle("get-capture-output-mode", () => captureOutputMode);
+
+ipcMain.handle("set-capture-output-mode", (event, mode: unknown) => {
+	const hud = getHudOverlayWindow();
+	if (!hud || event.sender !== hud.webContents) return captureOutputMode;
+	if (mode === "editor" || mode === "gif") setCaptureOutputMode(mode);
+	return captureOutputMode;
+});
+
+ipcMain.handle("complete-gif-capture", async (event, videoPath: unknown) => {
+	const hud = getHudOverlayWindow();
+	if (captureOutputMode !== "gif" || !hud || event.sender !== hud.webContents) {
+		return { handled: false };
+	}
+	if (typeof videoPath !== "string" || !videoPath) {
+		return { handled: false };
+	}
+	const { canceled, filePath } = await dialog.showSaveDialog({
+		defaultPath: path.join(app.getPath("pictures"), "Recordly-" + Date.now() + ".gif"),
+		filters: [{ name: "GIF image", extensions: ["gif"] }],
+	});
+	if (!canceled && filePath) {
+		try {
+			await convertVideoToGif(videoPath, filePath);
+			shell.showItemInFolder(filePath);
+		} catch (error) {
+			dialog.showErrorBox("GIF export failed", String(error));
+		}
+	}
+	// The recording stays in the library; the GIF flow never opens the editor.
+	if (LIGHTWEIGHT_MODE && !hud.isDestroyed()) {
+		hud.close();
+	}
+	return { handled: true };
+});
+
 ipcMain.handle("preview-update-toast", async () => {
 	if (process.platform !== "darwin") {
 		await previewNativeUpdateDialog(getUpdateDialogWindow);
@@ -734,6 +827,9 @@ ipcMain.handle("check-for-app-updates", async () => {
 	await checkForAppUpdates(getUpdateDialogWindow, { manual: true });
 	return { success: true, logPath: getUpdaterLogPath() };
 });
+
+let trayScreenshotAction: (() => void) | null = null;
+let trayRecordAction: ((mode: "editor" | "gif") => void) | null = null;
 
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
@@ -760,7 +856,19 @@ function updateTrayMenu(recording: boolean = false) {
 			]
 		: [
 				{
-					label: "Open",
+					label: "Screenshot",
+					click: () => trayScreenshotAction?.(),
+				},
+				{
+					label: "Record GIF",
+					click: () => trayRecordAction?.("gif"),
+				},
+				{
+					label: "Record Video",
+					click: () => trayRecordAction?.("editor"),
+				},
+				{
+					label: "Open Recorder",
 					click: () => {
 						if (!showHudOverlayFromTray()) {
 							focusOrCreateMainWindow();
@@ -908,7 +1016,7 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-	if (IS_SMOKE_EXPORT || process.platform !== "darwin") {
+	if (IS_SMOKE_EXPORT || (process.platform !== "darwin" && !LIGHTWEIGHT_MODE)) {
 		app.quit();
 	}
 });
@@ -928,11 +1036,6 @@ app.on("second-instance", (_event, commandLine) => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
-	registerRecordingShortcuts((action) => {
-		void dispatchRecordingShortcut(action).catch((error) =>
-			console.error("[recording-shortcuts]", error),
-		);
-	});
 	authCallbacks.startDevServer();
 	if (process.defaultApp && process.argv[1]) {
 		app.setAsDefaultProtocolClient(authCallbacks.protocol, process.execPath, [
@@ -1015,6 +1118,9 @@ app.whenReady().then(async () => {
 			console.log("[main] Closing HUD window via hud-overlay-close");
 			hud.close();
 		}
+		if (LIGHTWEIGHT_MODE && tray) {
+			return;
+		}
 
 		// If this was the last window (or we are in a state where we should quit), do it.
 		// We use a small delay to allow window.close() to propagate.
@@ -1073,6 +1179,61 @@ app.whenReady().then(async () => {
 		},
 	);
 
+	const takeScreenshot = registerScreenshotHandlers();
+	trayScreenshotAction = () => {
+		void takeScreenshot().catch((error) =>
+			dialog.showErrorBox("Screenshot failed", String(error)),
+		);
+	};
+	const openHudForShortcut = async () => {
+		createWindow();
+		const hud = getHudOverlayWindow();
+		if (!hud || hud.isDestroyed()) return;
+		// Lightweight mode idles without a HUD: wait until its renderer has mounted and
+		// subscribed to shortcuts, otherwise the dispatched action is dropped.
+		await new Promise<void>((resolve) => {
+			const finish = () => {
+				clearTimeout(timer);
+				ipcMain.removeListener("hud-overlay-renderer-ready", onReady);
+				hud.removeListener("closed", finish);
+				resolve();
+			};
+			const onReady = (event: Electron.IpcMainEvent) => {
+				if (!hud.isDestroyed() && event.sender === hud.webContents) finish();
+			};
+			const timer = setTimeout(finish, 10_000);
+			ipcMain.on("hud-overlay-renderer-ready", onReady);
+			hud.once("closed", finish);
+		});
+	};
+	trayRecordAction = (mode) => {
+		setCaptureOutputMode(mode);
+		void (async () => {
+			if (!getHudOverlayWindow()) await openHudForShortcut();
+			await dispatchRecordingShortcut("openCapturePicker");
+		})().catch((error) => console.error("[tray-capture]", error));
+	};
+	registerRecordingShortcuts((action) => {
+		if (action === "takeScreenshot") {
+			void takeScreenshot().catch((error) =>
+				dialog.showErrorBox("Screenshot failed", String(error)),
+			);
+			return;
+		}
+		const needsHud =
+			action === "toggleRecording" ||
+			action === "openCapturePicker" ||
+			action === "toggleHud";
+		void (async () => {
+			if (needsHud && !getHudOverlayWindow()) {
+				await openHudForShortcut();
+				// Showing the controls is the whole intent of toggleHud.
+				if (action === "toggleHud") return;
+			}
+			await dispatchRecordingShortcut(action);
+		})().catch((error) => console.error("[recording-shortcuts]", error));
+	});
+
 	if (IS_SMOKE_EXPORT || process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT) {
 		await logSmokeExportGpuDiagnostics();
 		if (IS_SMOKE_EXPORT) {
@@ -1090,7 +1251,9 @@ app.whenReady().then(async () => {
 		return;
 	}
 
-	createWindow();
+	if (!LIGHTWEIGHT_MODE) {
+		createWindow();
+	}
 	setupAutoUpdates(getUpdateDialogWindow, sendUpdateToastToWindows);
 	if (IS_DEV && process.env.RECORDLY_DEV_PREVIEW_UPDATE === "1") {
 		setTimeout(() => {

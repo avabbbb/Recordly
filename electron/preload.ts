@@ -544,6 +544,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	completeCapturePick: (pick: CapturePick | null) => {
 		return ipcRenderer.invoke("complete-capture-pick", pick);
 	},
+	startScreenshot: () => ipcRenderer.invoke("start-screenshot"),
+	getScreenshotContext: (displayId: number) =>
+		ipcRenderer.invoke("get-screenshot-context", displayId),
+	completeScreenshotPick: (
+		pick: { displayId: number; rect: import("../src/lib/screenshot").ScreenshotRect } | null,
+	) => ipcRenderer.invoke("complete-screenshot-pick", pick),
+	getScreenshotDocument: () => ipcRenderer.invoke("get-screenshot-document"),
+	screenshotAction: (
+		action: "copy" | "save" | "pin" | "close" | "opacity" | "zoom",
+		value?: string | number,
+	) => ipcRenderer.invoke("screenshot-action", action, value),
 	getCapturePickerContext: (displayId: number) => {
 		return ipcRenderer.invoke("get-capture-picker-context", displayId);
 	},
@@ -942,6 +953,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	setExperimentalUpdatesEnabled: (enabled: boolean) => {
 		return ipcRenderer.invoke("set-experimental-updates-enabled", enabled);
+	},
+	getLightweightMode: () => {
+		return ipcRenderer.invoke("get-lightweight-mode");
+	},
+	setLightweightMode: (enabled: boolean) => {
+		return ipcRenderer.invoke("set-lightweight-mode", enabled);
+	},
+	completeGifCapture: (videoPath: string) => {
+		return ipcRenderer.invoke("complete-gif-capture", videoPath);
+	},
+	getCaptureOutputMode: () => ipcRenderer.invoke("get-capture-output-mode"),
+	setCaptureOutputMode: (mode: "editor" | "gif") =>
+		ipcRenderer.invoke("set-capture-output-mode", mode),
+	onCaptureOutputModeChanged: (callback: (mode: "editor" | "gif") => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, mode: "editor" | "gif") =>
+			callback(mode);
+		ipcRenderer.on("capture-output-mode-changed", listener);
+		return () => {
+			ipcRenderer.removeListener("capture-output-mode-changed", listener);
+		};
 	},
 	previewUpdateToast: () => {
 		return ipcRenderer.invoke("preview-update-toast");
